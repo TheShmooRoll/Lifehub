@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const E=require('../src/engine.js');
+const s=E.fresh(false);
+s.tasks=[E.task('Large','grants',100,5,'soul'),E.task('Small','grants',0,1,'soul'),E.task('Rest','rest',0,1,'smile')];
+assert.equal(E.score(s,'grants'),500/6);
+assert.equal(E.score(s,'life'),(500/6)/2,'Life areas must have equal weight');
+assert.equal(E.score(s,'home'),null,'Empty areas are not scored as failures');
+E.reconcile(s);const xp=s.xp,history=s.history.length;
+s.tasks[0].progress=0;E.reconcile(s);s.tasks[0].progress=100;E.reconcile(s);
+assert.equal(s.xp,xp,'Rechecking a completed task must not farm XP');assert.equal(s.history.length,history);
+const backup=E.validate(JSON.parse(JSON.stringify(s)));assert.equal(backup.xp,xp);
+const cycle=JSON.parse(JSON.stringify(s));cycle.nodes.find(n=>n.id==='work').parent='lab';assert.throws(()=>E.validate(cycle));
+const bad=JSON.parse(JSON.stringify(s));bad.tasks[0].progress=150;assert.throws(()=>E.validate(bad));
+const dup=JSON.parse(JSON.stringify(s));dup.tasks.push({...dup.tasks[0]});assert.throws(()=>E.validate(dup));
+const demo=E.fresh();assert.ok(E.score(demo,'life')>0&&E.score(demo,'life')<100);assert.ok(demo.achievements.includes('spark'));
+const saved=demo.xp;E.reconcile(demo);assert.equal(demo.xp,saved);
+const all=E.fresh(false);for(const n of E.children(all,'life'))all.tasks.push(E.task(n.name,n.id,100,1,'heart'));E.reconcile(all);assert.ok(all.achievements.includes('constellation'));assert.equal(E.score(all,'life'),100);
+console.log('Passed: weighted progress, area balance, empty areas, XP idempotency, completion history, backup validation, cyclic/duplicate rejection, seeded data, and achievements.');
